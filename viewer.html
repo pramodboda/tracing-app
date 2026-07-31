@@ -201,16 +201,22 @@
     background:var(--panel); backdrop-filter:blur(10px); padding:5px 9px; border-radius:6px;
     border:1px solid var(--line); cursor:pointer;
   }
+  #viewport{
+    position:absolute; inset:0; width:100%; height:100%;
+    transform-origin:center center; will-change:transform; overflow:hidden;
+  }
 </style>
 </head>
 <body>
 
 <div id="stage">
-  <video id="cam" autoplay playsinline muted></video>
-  <div id="grid"></div>
-  <div id="overlayWrap">
-    <img id="overlayImg" alt="">
+  <div id="viewport">
+    <video id="cam" autoplay playsinline muted></video>
+    <div id="overlayWrap">
+      <img id="overlayImg" alt="">
+    </div>
   </div>
+  <div id="grid"></div>
   <div id="gestureCatcher"></div>
 
   <div class="bracket tl"></div>
@@ -271,6 +277,11 @@
       <option value="luminosity">Luminosity</option>
     </select>
   </div>
+  <div class="row">
+    <label>View Zoom</label>
+    <input type="range" id="viewZoomSlider" min="100" max="400" value="100">
+    <div class="val" id="viewZoomVal">100%</div>
+  </div>
 
   <div id="iconRow">
     <button class="ibtn" id="btnLock">
@@ -301,6 +312,10 @@
       <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
       <span>Reset</span>
     </button>
+    <button class="ibtn" id="btnViewReset">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M11 8v6M8 11h6M21 21l-4.3-4.3"/></svg>
+      <span>Reset View</span>
+    </button>
   </div>
 </div>
 
@@ -309,6 +324,7 @@
 <script>
 (function(){
   const cam = document.getElementById('cam');
+  const viewport = document.getElementById('viewport');
   const overlayImg = document.getElementById('overlayImg');
   const gestureCatcher = document.getElementById('gestureCatcher');
   const fileInput = document.getElementById('fileInput');
@@ -328,12 +344,15 @@
   const scaleVal = document.getElementById('scaleVal');
   const rotateVal = document.getElementById('rotateVal');
   const blendSelect = document.getElementById('blendSelect');
+  const viewZoomSlider = document.getElementById('viewZoomSlider');
+  const viewZoomVal = document.getElementById('viewZoomVal');
 
   const STORAGE_KEY = 'tracer_state_v1';
   let state = {
     x: 0, y: 0, scale: 1, rotate: 0, opacity: 0.55,
     flipH: false, flipV: false, blend: 'normal', imgData: null,
-    facing: 'environment', locked: false
+    facing: 'environment', locked: false,
+    viewZoom: 1, viewPanX: 0, viewPanY: 0
   };
 
   // ---------- persistence ----------
@@ -357,6 +376,11 @@
     overlayImg.style.mixBlendMode = state.blend;
   }
 
+  function applyViewTransform(){
+    viewport.style.transform =
+      `translate(${state.viewPanX}px, ${state.viewPanY}px) scale(${state.viewZoom})`;
+  }
+
   function applyLockUI(){
     btnLock.classList.toggle('locked', state.locked);
     lockLabel.textContent = state.locked ? 'Unlock' : 'Lock';
@@ -366,8 +390,10 @@
     document.getElementById('btnFlipH').disabled = state.locked;
     document.getElementById('btnFlipV').disabled = state.locked;
     document.getElementById('btnReset').disabled = state.locked;
-    gestureCatcher.style.touchAction = state.locked ? 'none' : 'none';
-    gestureCatcher.style.pointerEvents = state.locked ? 'none' : 'auto';
+    // gestureCatcher stays active either way: unlocked it moves/scales the
+    // overlay image, locked it pans/zooms the whole view instead.
+    gestureCatcher.style.touchAction = 'none';
+    gestureCatcher.style.pointerEvents = 'auto';
   }
 
   function syncControlsFromState(){
@@ -378,6 +404,8 @@
     rotateSlider.value = Math.round(state.rotate);
     rotateVal.textContent = Math.round(state.rotate) + '°';
     blendSelect.value = state.blend;
+    viewZoomSlider.value = Math.round(state.viewZoom * 100);
+    viewZoomVal.textContent = Math.round(state.viewZoom * 100) + '%';
   }
 
   // ---------- image loading ----------
@@ -448,6 +476,15 @@
     state.x=0; state.y=0; state.scale=1; state.rotate=0;
     syncControlsFromState(); applyTransform(); save();
   });
+  viewZoomSlider.addEventListener('input', ()=>{
+    state.viewZoom = viewZoomSlider.value/100;
+    viewZoomVal.textContent = viewZoomSlider.value + '%';
+    applyViewTransform(); save();
+  });
+  document.getElementById('btnViewReset').addEventListener('click', ()=>{
+    state.viewZoom = 1; state.viewPanX = 0; state.viewPanY = 0;
+    syncControlsFromState(); applyViewTransform(); save();
+  });
   collapseBtn.addEventListener('click', ()=>{
     dock.classList.toggle('collapsed');
     collapseBtn.textContent = dock.classList.contains('collapsed') ? '▼ Controls' : '▲ Controls';
@@ -468,15 +505,27 @@
     pointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
     const pts = getPointsArray();
     if(pts.length === 1){
-      gestureStart = { type:'drag', startX: pts[0].x, startY: pts[0].y, origX: state.x, origY: state.y };
+      if(state.locked){
+        gestureStart = { type:'view-pan', startX: pts[0].x, startY: pts[0].y, origX: state.viewPanX, origY: state.viewPanY };
+      } else {
+        gestureStart = { type:'drag', startX: pts[0].x, startY: pts[0].y, origX: state.x, origY: state.y };
+      }
     } else if(pts.length === 2){
-      gestureStart = {
-        type:'pinch',
-        startDist: dist(pts[0], pts[1]),
-        startAngle: angle(pts[0], pts[1]),
-        origScale: state.scale,
-        origRotate: state.rotate
-      };
+      if(state.locked){
+        gestureStart = {
+          type:'view-pinch',
+          startDist: dist(pts[0], pts[1]),
+          origZoom: state.viewZoom
+        };
+      } else {
+        gestureStart = {
+          type:'pinch',
+          startDist: dist(pts[0], pts[1]),
+          startAngle: angle(pts[0], pts[1]),
+          origScale: state.scale,
+          origRotate: state.rotate
+        };
+      }
     }
   });
 
@@ -498,6 +547,16 @@
       state.rotate = gestureStart.origRotate + (a - gestureStart.startAngle);
       syncControlsFromState();
       applyTransform();
+    } else if(gestureStart.type === 'view-pan' && pts.length === 1){
+      state.viewPanX = gestureStart.origX + (pts[0].x - gestureStart.startX);
+      state.viewPanY = gestureStart.origY + (pts[0].y - gestureStart.startY);
+      applyViewTransform();
+    } else if(gestureStart.type === 'view-pinch' && pts.length === 2){
+      const d = dist(pts[0], pts[1]);
+      const scaleFactor = d / gestureStart.startDist;
+      state.viewZoom = Math.max(1, Math.min(4, gestureStart.origZoom * scaleFactor));
+      syncControlsFromState();
+      applyViewTransform();
     }
   });
 
@@ -505,7 +564,11 @@
     pointers.delete(e.pointerId);
     const pts = getPointsArray();
     if(pts.length === 1){
-      gestureStart = { type:'drag', startX: pts[0].x, startY: pts[0].y, origX: state.x, origY: state.y };
+      if(state.locked){
+        gestureStart = { type:'view-pan', startX: pts[0].x, startY: pts[0].y, origX: state.viewPanX, origY: state.viewPanY };
+      } else {
+        gestureStart = { type:'drag', startX: pts[0].x, startY: pts[0].y, origX: state.x, origY: state.y };
+      }
     } else if(pts.length === 0){
       gestureStart = null;
       syncControlsFromState();
@@ -650,6 +713,7 @@
   load();
   syncControlsFromState();
   applyLockUI();
+  applyViewTransform();
   document.getElementById('btnFlipH').classList.toggle('active', state.flipH);
   document.getElementById('btnFlipV').classList.toggle('active', state.flipV);
   if(state.imgData){
