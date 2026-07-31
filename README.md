@@ -8,12 +8,12 @@ No app store, no backend server, no account. It's just static web pages that use
 
 ## What's in this project
 
-| File                | What it's for                                                                                                                                                                            |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `tracing-app.html`  | **Single-device mode.** Uses the camera of whatever device it's open on, with the reference image overlaid on the same screen.                                                           |
-| `phone-camera.html` | **Two-device mode — camera source.** Open this on the phone you're placing over your art surface. It streams that camera live to another device.                                         |
-| `ipad-viewer.html`  | **Two-device mode — viewer.** Open this on the device you want to actually watch and control (iPad, laptop, another phone). It receives the phone's video and adds the overlay controls. |
-| `index.html`        | A simple landing page linking to the two two-device pages.                                                                                                                               |
+| File               | What it's for                                                                                                                                                                            |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tracing-app.html` | **Single-device mode.** Uses the camera of whatever device it's open on, with the reference image overlaid on the same screen.                                                           |
+| `camera.html`      | **Two-device mode — camera source.** Open this on the phone you're placing over your art surface. It streams that camera live to another device.                                         |
+| `viewer.html`      | **Two-device mode — viewer.** Open this on the device you want to actually watch and control (iPad, laptop, another phone). It receives the phone's video and adds the overlay controls. |
+| `index.html`       | A simple landing page linking to the two two-device pages.                                                                                                                               |
 
 ---
 
