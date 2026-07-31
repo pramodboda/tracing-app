@@ -536,7 +536,10 @@
     peer = new Peer({
       config: { iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' }
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+        { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+        { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
       ]}
     });
 
@@ -544,19 +547,40 @@
       const call = peer.call('tracer-' + code.toUpperCase(), new MediaStream());
       currentCall = call;
       let gotStream = false;
+      let iceState = 'new';
 
       const timeout = setTimeout(()=>{
         if(!gotStream){
-          connectErr.textContent = 'No response — check the code and that the phone page is open.';
+          connectErr.textContent = 'No video after 15s (ICE state: ' + iceState + '). ' +
+            (iceState === 'checking' ? 'Both networks may be blocking WebRTC — try same WiFi to confirm.' :
+             iceState === 'failed' ? 'Route failed — the relay may be overloaded, try again in a moment.' :
+             'Check the code and that the phone page is open.');
           connectBtn.disabled = false;
           connectBtn.textContent = 'Connect';
           camTag.textContent = 'CAM: —';
         }
-      }, 9000);
+      }, 15000);
+
+      const pc = call.peerConnection;
+      if(pc){
+        pc.oniceconnectionstatechange = ()=>{
+          iceState = pc.iceConnectionState;
+          console.log('ICE state:', iceState);
+          if(!gotStream){
+            connectErr.textContent = 'Negotiating route (' + iceState + ')…';
+          }
+          if(iceState === 'failed'){
+            connectErr.textContent = 'Route failed — network likely blocking WebRTC entirely.';
+            connectBtn.disabled = false;
+            connectBtn.textContent = 'Connect';
+          }
+        };
+      }
 
       call.on('stream', (remoteStream)=>{
         gotStream = true;
         clearTimeout(timeout);
+        connectErr.textContent = '';
         cam.srcObject = remoteStream;
         camTag.textContent = 'CAM: LINKED';
         connectScreen.classList.add('hidden');

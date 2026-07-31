@@ -102,7 +102,10 @@
     peer = new Peer('tracer-' + code, {
       config: { iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' }
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+        { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+        { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
       ]}
     });
 
@@ -114,12 +117,33 @@
 
     peer.on('call', (call)=>{
       call.answer(localStream);
-      statusText.textContent = 'Connected to iPad';
-      statusDot.classList.add('connected');
+      statusText.textContent = 'Handshake OK — establishing video link…';
+      statusDot.classList.remove('connected');
+
       call.on('close', ()=>{
         statusText.textContent = 'iPad disconnected';
         statusDot.classList.remove('connected');
       });
+
+      // wait for actual ICE/media connectivity, not just the handshake
+      const pc = call.peerConnection;
+      if(pc){
+        pc.oniceconnectionstatechange = ()=>{
+          const s = pc.iceConnectionState;
+          console.log('ICE state:', s);
+          if(s === 'connected' || s === 'completed'){
+            statusText.textContent = 'Connected to iPad — video flowing';
+            statusDot.classList.add('connected');
+            statusDot.classList.remove('error');
+          } else if(s === 'checking'){
+            statusText.textContent = 'Negotiating route (STUN/TURN)…';
+          } else if(s === 'failed' || s === 'disconnected'){
+            statusText.textContent = 'Video link failed (' + s + ') — network may be blocking WebRTC';
+            statusDot.classList.remove('connected');
+            statusDot.classList.add('error');
+          }
+        };
+      }
     });
 
     peer.on('error', (err)=>{
