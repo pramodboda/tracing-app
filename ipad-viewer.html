@@ -526,6 +526,17 @@
   let peer = null;
   let currentCall = null;
 
+  // A blank 1fps video track is needed so the connection negotiates a real
+  // video channel — calling with a completely empty stream can leave some
+  // browsers with a connected-but-no-video-channel state.
+  function createDummyStream(){
+    const canvas = document.createElement('canvas');
+    canvas.width = 2; canvas.height = 2;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#000'; ctx.fillRect(0,0,2,2);
+    return canvas.captureStream(1);
+  }
+
   function connectToPhone(code){
     connectErr.textContent = '';
     connectBtn.disabled = true;
@@ -544,7 +555,7 @@
     });
 
     peer.on('open', ()=>{
-      const call = peer.call('tracer-' + code.toUpperCase(), new MediaStream());
+      const call = peer.call('tracer-' + code.toUpperCase(), createDummyStream());
       currentCall = call;
       let gotStream = false;
       let iceState = 'new';
