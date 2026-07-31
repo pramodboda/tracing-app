@@ -52,7 +52,8 @@ After pushing changes to the repo, GitHub Pages typically rebuilds within about 
    - **Blend** — try _Difference_ to precisely align edges before switching back to _Normal_ to trace
    - **Flip H / Flip V** — mirror the image
    - **Grid** — toggle a reference grid
-   - **Lock** — freeze position/scale/rotation once you're happy with placement, so accidental touches don't move it
+   - **Lock Image** — freeze position/scale/rotation once you're happy with image placement, so accidental touches don't move it
+   - **Zoom-in and Zoom-out view** - When the image is unlocked, drag/pinch behave exactly as before — moving and scaling the overlay. Once you tap Lock, those same gestures switch purpose: one-finger drag pans the whole view (camera + locked overlay together), and pinch zooms in/out on both together (1x–4x) — so you can lean in on fine detail without ever disturbing your placement. There's also a View Zoom slider in the dock for precise control without pinching, and a Reset View button to snap back to 1x centered.
    - **Switch** — toggle front/rear camera
 
 ### Two-device mode
@@ -64,7 +65,10 @@ After pushing changes to the repo, GitHub Pages typically rebuilds within about 
 
 ### Gestures
 
-one finger drag = move image, two-finger pinch = scale, two-finger twist = rotate. The "Difference" blend mode is worth trying — it's the trick real tracing apps use: aligned lines turn black, misaligned ones glow, so you can nail proportions precisely before switching back to Normal and turning the opacity down to draw.
+- one finger drag = move image,
+- two-finger pinch = scale,
+- two-finger twist = rotate.
+- The "Difference" blend mode is worth trying — it's the trick real tracing apps use: aligned lines turn black, misaligned ones glow, so you can nail proportions precisely before switching back to Normal and turning the opacity down to draw.
 
 ---
 

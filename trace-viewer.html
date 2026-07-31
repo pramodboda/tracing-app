@@ -587,6 +587,23 @@
   const disconnectBtn = document.getElementById('disconnectBtn');
 
   let peer = null;
+  let wakeLock = null;
+
+  async function requestWakeLock(){
+    try{
+      if('wakeLock' in navigator){
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', ()=>{ wakeLock = null; });
+      }
+    }catch(err){
+      console.log('Wake Lock not available:', err.message);
+    }
+  }
+  document.addEventListener('visibilitychange', ()=>{
+    if(wakeLock === null && document.visibilityState === 'visible'){
+      requestWakeLock();
+    }
+  });
   let currentCall = null;
 
   // A blank 1fps video track is needed so the connection negotiates a real
@@ -714,6 +731,7 @@
   syncControlsFromState();
   applyLockUI();
   applyViewTransform();
+  requestWakeLock();
   document.getElementById('btnFlipH').classList.toggle('active', state.flipH);
   document.getElementById('btnFlipV').classList.toggle('active', state.flipV);
   if(state.imgData){
