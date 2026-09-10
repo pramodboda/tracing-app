@@ -1115,7 +1115,7 @@
 
 </html> -->
 
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -2276,6 +2276,1193 @@
       applyLockUI();
       applyViewTransform();
       requestWakeLock();
+      document.getElementById('btnFlipH').classList.toggle('active', state.flipH);
+      document.getElementById('btnFlipV').classList.toggle('active', state.flipV);
+      if (state.imgData) {
+        overlayImg.src = state.imgData;
+      }
+
+      document.addEventListener('touchmove', (e) => { e.preventDefault(); }, { passive: false });
+    })();
+  </script>
+</body>
+
+</html> -->
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Tracer - iPad Viewer by Pramod Boda</title>
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <style>
+    :root {
+      --bg: #0B0D10;
+      --panel: rgba(18, 20, 24, 0.74);
+      --panel-solid: #14161B;
+      --line: rgba(242, 239, 233, 0.14);
+      --ink: #F2EFE9;
+      --ink-dim: #9A9A96;
+      --accent: #E8A33D;
+      --accent-dim: rgba(232, 163, 61, 0.28);
+      --mono: ui-monospace, "SF Mono", "Roboto Mono", Menlo, Consolas, monospace;
+      --sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Helvetica, Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--sans);
+      overflow: hidden;
+      overscroll-behavior: none;
+      position: fixed;
+      inset: 0;
+    }
+
+    #stage {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      touch-action: none;
+    }
+
+    video#cam {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      background: #000;
+    }
+
+    #overlayWrap {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    img#overlayImg {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      max-width: none;
+      max-height: none;
+      transform-origin: center center;
+      will-change: transform;
+      pointer-events: none;
+      filter: none;
+    }
+
+    #gestureCatcher {
+      position: absolute;
+      inset: 0;
+      touch-action: none;
+    }
+
+    /* viewfinder brackets — signature element */
+    .bracket {
+      position: absolute;
+      width: 34px;
+      height: 34px;
+      border-color: var(--accent);
+      border-style: solid;
+      opacity: 0.85;
+      pointer-events: none;
+      z-index: 5;
+      filter: drop-shadow(0 0 6px rgba(232, 163, 61, 0.35));
+    }
+
+    .bracket.tl {
+      top: 14px;
+      left: 14px;
+      border-width: 2.5px 0 0 2.5px;
+      border-top-left-radius: 6px;
+    }
+
+    .bracket.tr {
+      top: 14px;
+      right: 14px;
+      border-width: 2.5px 2.5px 0 0;
+      border-top-right-radius: 6px;
+    }
+
+    .bracket.bl {
+      bottom: 14px;
+      left: 14px;
+      border-width: 0 0 2.5px 2.5px;
+      border-bottom-left-radius: 6px;
+    }
+
+    .bracket.br {
+      bottom: 14px;
+      right: 14px;
+      border-width: 0 2.5px 2.5px 0;
+      border-bottom-right-radius: 6px;
+    }
+
+    #grid {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .2s;
+      background-image:
+        linear-gradient(to right, rgba(232, 163, 61, 0.35) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(232, 163, 61, 0.35) 1px, transparent 1px);
+      background-size: 12.5% 12.5%;
+    }
+
+    #grid.on {
+      opacity: 1;
+    }
+
+    #emptyState {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 14px;
+      z-index: 4;
+      text-align: center;
+      padding: 24px;
+    }
+
+    #emptyState.hidden {
+      display: none;
+    }
+
+    #emptyState .eyebrow {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      color: var(--accent);
+      text-transform: uppercase;
+    }
+
+    #emptyState h1 {
+      font-size: 22px;
+      font-weight: 600;
+      margin: 0;
+      color: var(--ink);
+    }
+
+    #emptyState p {
+      font-size: 13.5px;
+      color: var(--ink-dim);
+      max-width: 280px;
+      margin: 0;
+      line-height: 1.5;
+    }
+
+    #loadBtn {
+      margin-top: 6px;
+      padding: 12px 22px;
+      border-radius: 10px;
+      border: 1px solid var(--accent);
+      background: var(--accent-dim);
+      color: var(--accent);
+      font-size: 14px;
+      font-weight: 600;
+      font-family: var(--sans);
+      cursor: pointer;
+    }
+
+    /* top status bar */
+    #statusBar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 6;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 16px 0 16px;
+      pointer-events: none;
+    }
+
+    #statusBar .tag {
+      font-family: var(--mono);
+      font-size: 10.5px;
+      letter-spacing: 0.08em;
+      color: var(--ink-dim);
+      background: var(--panel);
+      backdrop-filter: blur(10px);
+      padding: 5px 9px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      pointer-events: auto;
+    }
+
+    #statusBar .tag b {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    /* bottom control dock */
+    #dock {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 6;
+      background: var(--panel);
+      backdrop-filter: blur(16px);
+      border-top: 1px solid var(--line);
+      padding: 10px 12px calc(12px + env(safe-area-inset-bottom)) 12px;
+    }
+
+    #dockHandle {
+      width: 36px;
+      height: 4px;
+      background: var(--line);
+      border-radius: 3px;
+      margin: 0 auto 10px auto;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .row:last-child {
+      margin-bottom: 0;
+    }
+
+    .row label {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink-dim);
+      width: 56px;
+      flex-shrink: 0;
+    }
+
+    .row .val {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--accent);
+      width: 38px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    #iconRow {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+    }
+
+    .ibtn {
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      background: transparent;
+      border: 1px solid var(--line);
+      color: var(--ink);
+      border-radius: 10px;
+      padding: 8px 10px;
+      cursor: pointer;
+      font-family: var(--sans);
+      min-width: 58px;
+    }
+
+    .ibtn.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-dim);
+    }
+
+    .ibtn svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+    }
+
+    .ibtn span {
+      font-size: 9px;
+      letter-spacing: 0.03em;
+      font-family: var(--mono);
+      text-transform: uppercase;
+    }
+
+    .ibtn#btnLock.locked {
+      border-color: #5CC28B;
+      color: #5CC28B;
+      background: rgba(92, 194, 139, 0.16);
+    }
+
+    .ibtn:disabled {
+      opacity: 0.32;
+      pointer-events: none;
+    }
+
+    #lockTag {
+      display: none;
+      font-family: var(--mono);
+      font-size: 10.5px;
+      letter-spacing: 0.08em;
+      color: #5CC28B;
+      background: var(--panel);
+      backdrop-filter: blur(10px);
+      padding: 5px 9px;
+      border-radius: 6px;
+      border: 1px solid rgba(92, 194, 139, 0.4);
+      pointer-events: none;
+    }
+
+    #lockTag.on {
+      display: block;
+    }
+
+    #blendSelect {
+      font-family: var(--mono);
+      font-size: 11px;
+      background: var(--panel-solid);
+      color: var(--ink);
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 6px 8px;
+      flex: 1;
+    }
+
+    #collapseBtn {
+      position: absolute;
+      right: 54px;
+      background: var(--panel);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--line);
+      border-bottom: none;
+      border-radius: 10px 10px 0 0;
+      padding: 6px 12px;
+      color: var(--ink-dim);
+      font-size: 11px;
+      font-family: var(--mono);
+      z-index: 7;
+      cursor: pointer;
+      transition: bottom .25s ease;
+    }
+
+    #dock.collapsed {
+      transform: translateY(100%);
+    }
+
+    #dock {
+      transition: transform .25s ease;
+    }
+
+    input[type=file] {
+      display: none;
+    }
+
+    #connectScreen {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 18px;
+      padding: 24px;
+    }
+
+    #connectScreen.hidden {
+      display: none;
+    }
+
+    #connectScreen .eyebrow {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      color: var(--accent);
+      text-transform: uppercase;
+    }
+
+    #connectScreen h1 {
+      font-size: 22px;
+      font-weight: 600;
+      margin: 0;
+      color: var(--ink);
+      text-align: center;
+    }
+
+    #connectScreen p {
+      font-size: 13.5px;
+      color: var(--ink-dim);
+      max-width: 300px;
+      margin: 0;
+      line-height: 1.5;
+      text-align: center;
+    }
+
+    #codeInput {
+      font-family: var(--mono);
+      font-size: 26px;
+      letter-spacing: 0.15em;
+      text-align: center;
+      text-transform: uppercase;
+      background: var(--panel-solid);
+      border: 1px solid var(--line);
+      color: var(--ink);
+      border-radius: 12px;
+      padding: 14px 18px;
+      width: 220px;
+      outline: none;
+    }
+
+    #codeInput:focus {
+      border-color: var(--accent);
+    }
+
+    #connectBtn {
+      padding: 13px 28px;
+      border-radius: 10px;
+      border: 1px solid var(--accent);
+      background: var(--accent-dim);
+      color: var(--accent);
+      font-size: 15px;
+      font-weight: 600;
+      font-family: var(--sans);
+      cursor: pointer;
+    }
+
+    #connectBtn:disabled {
+      opacity: 0.4;
+    }
+
+    #connectErr {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: #e05c5c;
+      min-height: 16px;
+    }
+
+    #disconnectBtn {
+      position: absolute;
+      top: 42px;
+      left: 16px;
+      z-index: 6;
+      font-family: var(--mono);
+      font-size: 10.5px;
+      letter-spacing: 0.08em;
+      color: var(--ink-dim);
+      background: var(--panel);
+      backdrop-filter: blur(10px);
+      padding: 5px 9px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      cursor: pointer;
+    }
+
+    #viewport {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      transform-origin: center center;
+      will-change: transform;
+      overflow: hidden;
+    }
+
+    /* ---------- custom pointer-driven slider ---------- */
+    .slider {
+      position: relative;
+      flex: 1;
+      height: 28px;
+      touch-action: none;
+      cursor: pointer;
+    }
+
+    .slider::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 50%;
+      height: 3px;
+      background: var(--line);
+      border-radius: 2px;
+      transform: translateY(-50%);
+    }
+
+    .slider-fill {
+      position: absolute;
+      left: 0;
+      top: 50%;
+      height: 3px;
+      background: var(--accent);
+      border-radius: 2px;
+      transform: translateY(-50%);
+      pointer-events: none;
+    }
+
+    .slider-thumb {
+      position: absolute;
+      top: 50%;
+      width: 20px;
+      height: 20px;
+      margin-left: -10px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: 2px solid var(--panel-solid);
+      box-shadow: 0 0 0 1px var(--accent);
+      transform: translateY(-50%);
+      pointer-events: none;
+    }
+
+    .slider.disabled {
+      opacity: 0.35;
+      pointer-events: none;
+    }
+
+    .slider.disabled .slider-thumb {
+      background: var(--ink-dim);
+      box-shadow: 0 0 0 1px var(--ink-dim);
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="stage">
+    <div id="viewport">
+      <video id="cam" autoplay playsinline muted></video>
+      <div id="overlayWrap">
+        <img id="overlayImg" alt="">
+      </div>
+    </div>
+    <div id="grid"></div>
+    <div id="gestureCatcher"></div>
+
+    <div class="bracket tl"></div>
+    <div class="bracket tr"></div>
+    <div class="bracket bl"></div>
+    <div class="bracket br"></div>
+
+    <div id="statusBar">
+      <div class="tag">TRACER <b>·</b> VIEWER by PRAMOD BDOA</div>
+      <div class="tag" id="camTag">CAM: —</div>
+    </div>
+    <div id="lockTag" style="position:absolute; top:44px; right:16px; z-index:6;">🔒 LOCKED</div>
+    <button id="disconnectBtn">✕ Disconnect</button>
+
+    <div id="emptyState" class="hidden">
+      <div class="eyebrow">Step 2</div>
+      <h1>Load a reference image</h1>
+      <p>Now load the artwork you want to trace — it'll overlay on your phone's live camera feed.</p>
+      <button id="loadBtn">Choose Image</button>
+    </div>
+  </div>
+
+  <!-- <div id="connectScreen">
+    <div class="eyebrow">Step 1</div>
+    <h1>Connect to your phone</h1>
+    <p>Open the camera page on your phone, place it face-down over your art surface, then enter the code shown there.
+    </p>
+    <input type="text" id="codeInput" placeholder="XXXXX" maxlength="5">
+    <button id="connectBtn">Connect</button>
+    <div id="connectErr"></div>
+  </div> -->
+
+  <button id="collapseBtn">▲</button>
+  <div id="dock">
+    <div id="dockHandle"></div>
+
+    <div class="row">
+      <label>Opacity</label>
+      <div class="slider" id="opacitySlider">
+        <div class="slider-fill"></div>
+        <div class="slider-thumb"></div>
+      </div>
+      <div class="val" id="opacityVal">55%</div>
+    </div>
+    <div class="row">
+      <label>Scale</label>
+      <div class="slider" id="scaleSlider">
+        <div class="slider-fill"></div>
+        <div class="slider-thumb"></div>
+      </div>
+      <div class="val" id="scaleVal">100%</div>
+    </div>
+    <div class="row">
+      <label>Rotate</label>
+      <div class="slider" id="rotateSlider">
+        <div class="slider-fill"></div>
+        <div class="slider-thumb"></div>
+      </div>
+      <div class="val" id="rotateVal">0°</div>
+    </div>
+    <div class="row">
+      <label>Blend</label>
+      <select id="blendSelect">
+        <option value="normal">Normal</option>
+        <option value="difference">Difference (align edges)</option>
+        <option value="multiply">Multiply</option>
+        <option value="screen">Screen</option>
+        <option value="luminosity">Luminosity</option>
+      </select>
+    </div>
+    <div class="row">
+      <label>View Zoom</label>
+      <div class="slider" id="viewZoomSlider">
+        <div class="slider-fill"></div>
+        <div class="slider-thumb"></div>
+      </div>
+      <div class="val" id="viewZoomVal">100%</div>
+    </div>
+
+    <div id="iconRow">
+      <button class="ibtn" id="btnLock">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8">
+          <rect x="4" y="11" width="16" height="9" rx="2" />
+          <path d="M8 11V7a4 4 0 018 0v4" />
+        </svg>
+        <span id="lockLabel">Lock</span>
+      </button>
+      <button class="ibtn" id="btnLoad">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8">
+          <path d="M4 16l4.5-6 3.5 4 3-3L20 16" />
+          <rect x="3" y="4" width="18" height="16" rx="2" />
+        </svg>
+        <span>Image</span>
+      </button>
+      <button class="ibtn" id="btnFlipH">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8">
+          <path d="M12 3v18M7 7l-3 5 3 5M17 7l3 5-3 5" />
+        </svg>
+        <span>Flip H</span>
+      </button>
+      <button class="ibtn" id="btnFlipV">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8">
+          <path d="M3 12h18M7 7l5-3 5 3M7 17l5 3 5-3" />
+        </svg>
+        <span>Flip V</span>
+      </button>
+      <button class="ibtn" id="btnGrid">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8">
+          <rect x="3" y="3" width="18" height="18" rx="1" />
+          <path d="M3 9h18M3 15h18M9 3v18M15 3v18" />
+        </svg>
+        <span>Grid</span>
+      </button>
+      <button class="ibtn" id="btnCamSwitch">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8">
+          <path d="M17 2l4 4-4 4M3 12a9 9 0 0115-6.7M7 22l-4-4 4-4M21 12a9 9 0 01-15 6.7" />
+        </svg>
+        <span>Reconnect</span>
+      </button>
+      <button class="ibtn" id="btnReset">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8">
+          <path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8" />
+          <path d="M3 3v5h5" />
+        </svg>
+        <span>Reset</span>
+      </button>
+      <button class="ibtn" id="btnViewReset">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8">
+          <circle cx="11" cy="11" r="7" />
+          <path d="M11 8v6M8 11h6M21 21l-4.3-4.3" />
+        </svg>
+        <span>Reset View</span>
+      </button>
+    </div>
+  </div>
+
+  <input type="file" id="fileInput" accept="image/*">
+
+  <script>
+    (function () {
+      const cam = document.getElementById('cam');
+      const viewport = document.getElementById('viewport');
+      const overlayImg = document.getElementById('overlayImg');
+      const gestureCatcher = document.getElementById('gestureCatcher');
+      const fileInput = document.getElementById('fileInput');
+      const emptyState = document.getElementById('emptyState');
+      const camTag = document.getElementById('camTag');
+      const grid = document.getElementById('grid');
+      const dock = document.getElementById('dock');
+      const collapseBtn = document.getElementById('collapseBtn');
+      const btnLock = document.getElementById('btnLock');
+      const lockLabel = document.getElementById('lockLabel');
+      const lockTag = document.getElementById('lockTag');
+
+      const opacityValEl = document.getElementById('opacityVal');
+      const scaleValEl = document.getElementById('scaleVal');
+      const rotateValEl = document.getElementById('rotateVal');
+      const viewZoomValEl = document.getElementById('viewZoomVal');
+      const blendSelect = document.getElementById('blendSelect');
+
+      const STORAGE_KEY = 'tracer_state_v1';
+      let state = {
+        x: 0, y: 0, scale: 1, rotate: 0, opacity: 0.55,
+        flipH: false, flipV: false, blend: 'normal', imgData: null,
+        facing: 'environment', locked: false,
+        viewZoom: 1, viewPanX: 0, viewPanY: 0
+      };
+
+      // ---------- persistence ----------
+      function save() {
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { }
+      }
+      function load() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (raw) { Object.assign(state, JSON.parse(raw)); }
+        } catch (e) { }
+      }
+
+      // ---------- overlay transform ----------
+      function applyTransform() {
+        const sx = state.flipH ? -1 : 1;
+        const sy = state.flipV ? -1 : 1;
+        overlayImg.style.transform =
+          `translate(-50%, -50%) translate(${state.x}px, ${state.y}px) rotate(${state.rotate}deg) scale(${state.scale * sx}, ${state.scale * sy})`;
+        overlayImg.style.opacity = state.opacity;
+        overlayImg.style.mixBlendMode = state.blend;
+      }
+
+      function applyViewTransform() {
+        viewport.style.transform =
+          `translate(${state.viewPanX}px, ${state.viewPanY}px) scale(${state.viewZoom})`;
+      }
+
+      // ---------- custom pointer-driven slider ----------
+      function makeSlider(el, { min, max, step = 1, value, onChange, onCommit }) {
+        const fill = el.querySelector('.slider-fill');
+        const thumb = el.querySelector('.slider-thumb');
+        let current = value;
+
+        function render() {
+          const pct = (current - min) / (max - min);
+          const pctClamped = Math.max(0, Math.min(1, pct));
+          fill.style.width = (pctClamped * 100) + '%';
+          thumb.style.left = (pctClamped * 100) + '%';
+        }
+
+        function valueFromClientX(clientX) {
+          const rect = el.getBoundingClientRect();
+          let pct = (clientX - rect.left) / rect.width;
+          pct = Math.max(0, Math.min(1, pct));
+          let v = min + pct * (max - min);
+          v = Math.round(v / step) * step;
+          return Math.max(min, Math.min(max, v));
+        }
+
+        el.addEventListener('pointerdown', (e) => {
+          if (el.classList.contains('disabled')) return;
+          el.setPointerCapture(e.pointerId);
+          const v = valueFromClientX(e.clientX);
+          if (v !== current) { current = v; render(); onChange(current); }
+        });
+        el.addEventListener('pointermove', (e) => {
+          if (el.classList.contains('disabled')) return;
+          if (!el.hasPointerCapture(e.pointerId)) return;
+          const v = valueFromClientX(e.clientX);
+          if (v !== current) { current = v; render(); onChange(current); }
+        });
+        function commit(e) {
+          if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
+          if (onCommit) onCommit(current);
+        }
+        el.addEventListener('pointerup', commit);
+        el.addEventListener('pointercancel', commit);
+
+        render();
+        return {
+          setValue(v) { current = v; render(); }
+        };
+      }
+
+      const opacitySlider = makeSlider(document.getElementById('opacitySlider'), {
+        min: 5, max: 100, value: 55,
+        onChange: (v) => { state.opacity = v / 100; opacityValEl.textContent = v + '%'; applyTransform(); },
+        onCommit: () => save()
+      });
+      const scaleSlider = makeSlider(document.getElementById('scaleSlider'), {
+        min: 10, max: 400, value: 100,
+        onChange: (v) => { state.scale = v / 100; scaleValEl.textContent = v + '%'; applyTransform(); },
+        onCommit: () => save()
+      });
+      const rotateSlider = makeSlider(document.getElementById('rotateSlider'), {
+        min: -180, max: 180, value: 0,
+        onChange: (v) => { state.rotate = v; rotateValEl.textContent = v + '°'; applyTransform(); },
+        onCommit: () => save()
+      });
+      const viewZoomSlider = makeSlider(document.getElementById('viewZoomSlider'), {
+        min: 100, max: 400, value: 100,
+        onChange: (v) => { state.viewZoom = v / 100; viewZoomValEl.textContent = v + '%'; applyViewTransform(); },
+        onCommit: () => save()
+      });
+
+      function applyLockUI() {
+        btnLock.classList.toggle('locked', state.locked);
+        lockLabel.textContent = state.locked ? 'Unlock' : 'Lock';
+        lockTag.classList.toggle('on', state.locked);
+        document.getElementById('scaleSlider').classList.toggle('disabled', state.locked);
+        document.getElementById('rotateSlider').classList.toggle('disabled', state.locked);
+        document.getElementById('btnFlipH').disabled = state.locked;
+        document.getElementById('btnFlipV').disabled = state.locked;
+        document.getElementById('btnReset').disabled = state.locked;
+        // gestureCatcher stays active either way: unlocked it moves/scales the
+        // overlay image, locked it pans/zooms the whole view instead.
+        gestureCatcher.style.touchAction = 'none';
+        gestureCatcher.style.pointerEvents = 'auto';
+      }
+
+      function syncControlsFromState() {
+        opacitySlider.setValue(Math.round(state.opacity * 100));
+        opacityValEl.textContent = Math.round(state.opacity * 100) + '%';
+        scaleSlider.setValue(Math.round(state.scale * 100));
+        scaleValEl.textContent = Math.round(state.scale * 100) + '%';
+        rotateSlider.setValue(Math.round(state.rotate));
+        rotateValEl.textContent = Math.round(state.rotate) + '°';
+        blendSelect.value = state.blend;
+        viewZoomSlider.setValue(Math.round(state.viewZoom * 100));
+        viewZoomValEl.textContent = Math.round(state.viewZoom * 100) + '%';
+      }
+
+      // ---------- image loading ----------
+      function setImage(dataUrl) {
+        overlayImg.src = dataUrl;
+        state.imgData = dataUrl;
+        emptyState.classList.add('hidden');
+        save();
+      }
+      overlayImg.addEventListener('load', () => {
+        const maxDim = Math.max(window.innerWidth, window.innerHeight) * 1.2;
+        let w = overlayImg.naturalWidth, h = overlayImg.naturalHeight;
+        const ratio = Math.min(1, maxDim / Math.max(w, h));
+        overlayImg.style.width = (w * ratio) + 'px';
+        overlayImg.style.height = (h * ratio) + 'px';
+        applyTransform();
+      });
+
+      function handleFile(file) {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => setImage(e.target.result);
+        reader.readAsDataURL(file);
+      }
+      fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+      document.getElementById('loadBtn').addEventListener('click', () => fileInput.click());
+      document.getElementById('btnLoad').addEventListener('click', () => fileInput.click());
+
+      // ---------- controls ----------
+      blendSelect.addEventListener('change', () => {
+        state.blend = blendSelect.value;
+        applyTransform(); save();
+      });
+      document.getElementById('btnFlipH').addEventListener('click', () => {
+        state.flipH = !state.flipH; applyTransform(); save();
+        document.getElementById('btnFlipH').classList.toggle('active', state.flipH);
+      });
+      document.getElementById('btnFlipV').addEventListener('click', () => {
+        state.flipV = !state.flipV; applyTransform(); save();
+        document.getElementById('btnFlipV').classList.toggle('active', state.flipV);
+      });
+      document.getElementById('btnGrid').addEventListener('click', (e) => {
+        grid.classList.toggle('on');
+        e.currentTarget.classList.toggle('active', grid.classList.contains('on'));
+      });
+      btnLock.addEventListener('click', () => {
+        state.locked = !state.locked;
+        applyLockUI();
+        save();
+      });
+      document.getElementById('btnReset').addEventListener('click', () => {
+        state.x = 0; state.y = 0; state.scale = 1; state.rotate = 0;
+        syncControlsFromState(); applyTransform(); save();
+      });
+      document.getElementById('btnViewReset').addEventListener('click', () => {
+        state.viewZoom = 1; state.viewPanX = 0; state.viewPanY = 0;
+        syncControlsFromState(); applyViewTransform(); save();
+      });
+
+      // Anchor the collapse tab to the dock's real height rather than a
+      // fixed CSS offset — the dock's height isn't a fixed constant across
+      // browsers/safe-area insets, so this measures it directly.
+      function positionCollapseBtn() {
+        if (dock.classList.contains('collapsed')) {
+          collapseBtn.style.bottom = '0px';
+        } else {
+          collapseBtn.style.bottom = dock.offsetHeight + 'px';
+        }
+      }
+      collapseBtn.addEventListener('click', () => {
+        dock.classList.toggle('collapsed');
+        collapseBtn.textContent = dock.classList.contains('collapsed') ? '▼' : '▲';
+        positionCollapseBtn();
+      });
+      window.addEventListener('resize', positionCollapseBtn);
+
+      // ---------- gestures: drag to move, pinch to scale+rotate ----------
+      let pointers = new Map();
+      let gestureStart = null;
+
+      function getPointsArray() {
+        return Array.from(pointers.values());
+      }
+      function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+      function angle(a, b) { return Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI; }
+
+      gestureCatcher.addEventListener('pointerdown', (e) => {
+        gestureCatcher.setPointerCapture(e.pointerId);
+        pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        const pts = getPointsArray();
+        if (pts.length === 1) {
+          if (state.locked) {
+            gestureStart = { type: 'view-pan', startX: pts[0].x, startY: pts[0].y, origX: state.viewPanX, origY: state.viewPanY };
+          } else {
+            gestureStart = { type: 'drag', startX: pts[0].x, startY: pts[0].y, origX: state.x, origY: state.y };
+          }
+        } else if (pts.length === 2) {
+          if (state.locked) {
+            gestureStart = {
+              type: 'view-pinch',
+              startDist: dist(pts[0], pts[1]),
+              origZoom: state.viewZoom
+            };
+          } else {
+            gestureStart = {
+              type: 'pinch',
+              startDist: dist(pts[0], pts[1]),
+              startAngle: angle(pts[0], pts[1]),
+              origScale: state.scale,
+              origRotate: state.rotate
+            };
+          }
+        }
+      });
+
+      gestureCatcher.addEventListener('pointermove', (e) => {
+        if (!pointers.has(e.pointerId)) return;
+        pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        const pts = getPointsArray();
+        if (!gestureStart) return;
+
+        if (gestureStart.type === 'drag' && pts.length === 1) {
+          state.x = gestureStart.origX + (pts[0].x - gestureStart.startX);
+          state.y = gestureStart.origY + (pts[0].y - gestureStart.startY);
+          applyTransform();
+        } else if (gestureStart.type === 'pinch' && pts.length === 2) {
+          const d = dist(pts[0], pts[1]);
+          const a = angle(pts[0], pts[1]);
+          const scaleFactor = d / gestureStart.startDist;
+          state.scale = Math.max(0.05, gestureStart.origScale * scaleFactor);
+          state.rotate = gestureStart.origRotate + (a - gestureStart.startAngle);
+          syncControlsFromState();
+          applyTransform();
+        } else if (gestureStart.type === 'view-pan' && pts.length === 1) {
+          state.viewPanX = gestureStart.origX + (pts[0].x - gestureStart.startX);
+          state.viewPanY = gestureStart.origY + (pts[0].y - gestureStart.startY);
+          applyViewTransform();
+        } else if (gestureStart.type === 'view-pinch' && pts.length === 2) {
+          const d = dist(pts[0], pts[1]);
+          const scaleFactor = d / gestureStart.startDist;
+          state.viewZoom = Math.max(1, Math.min(4, gestureStart.origZoom * scaleFactor));
+          syncControlsFromState();
+          applyViewTransform();
+        }
+      });
+
+      function endPointer(e) {
+        pointers.delete(e.pointerId);
+        const pts = getPointsArray();
+        if (pts.length === 1) {
+          if (state.locked) {
+            gestureStart = { type: 'view-pan', startX: pts[0].x, startY: pts[0].y, origX: state.viewPanX, origY: state.viewPanY };
+          } else {
+            gestureStart = { type: 'drag', startX: pts[0].x, startY: pts[0].y, origX: state.x, origY: state.y };
+          }
+        } else if (pts.length === 0) {
+          gestureStart = null;
+          syncControlsFromState();
+          save();
+        }
+      }
+      gestureCatcher.addEventListener('pointerup', endPointer);
+      gestureCatcher.addEventListener('pointercancel', endPointer);
+      gestureCatcher.addEventListener('pointerleave', endPointer);
+
+      // ---------- WebRTC receive from phone ----------
+      const connectScreen = document.getElementById('connectScreen');
+      const codeInput = document.getElementById('codeInput');
+      const connectBtn = document.getElementById('connectBtn');
+      const connectErr = document.getElementById('connectErr');
+      const disconnectBtn = document.getElementById('disconnectBtn');
+
+      let peer = null;
+      let wakeLock = null;
+
+      async function requestWakeLock() {
+        try {
+          if ('wakeLock' in navigator) {
+            wakeLock = await navigator.wakeLock.request('screen');
+            wakeLock.addEventListener('release', () => { wakeLock = null; });
+          }
+        } catch (err) {
+          console.log('Wake Lock not available:', err.message);
+        }
+      }
+      document.addEventListener('visibilitychange', () => {
+        if (wakeLock === null && document.visibilityState === 'visible') {
+          requestWakeLock();
+        }
+      });
+      let currentCall = null;
+
+      function createDummyStream() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 2; canvas.height = 2;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 2, 2);
+        return canvas.captureStream(1);
+      }
+
+      function connectToPhone(code) {
+        connectErr.textContent = '';
+        connectBtn.disabled = true;
+        connectBtn.textContent = 'Connecting…';
+        camTag.textContent = 'CAM: CONNECTING';
+
+        if (peer) peer.destroy();
+        peer = new Peer({
+          config: {
+            iceServers: [
+              { urls: 'stun:stun.l.google.com:19302' },
+              { urls: 'stun:stun1.l.google.com:19302' },
+              { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+              { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+              { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+            ]
+          }
+        });
+
+        peer.on('open', () => {
+          const call = peer.call('tracer-' + code.toUpperCase(), createDummyStream());
+          currentCall = call;
+          let gotStream = false;
+          let iceState = 'new';
+
+          const timeout = setTimeout(() => {
+            if (!gotStream) {
+              connectErr.textContent = 'No video after 15s (ICE state: ' + iceState + '). ' +
+                (iceState === 'checking' ? 'Both networks may be blocking WebRTC — try same WiFi to confirm.' :
+                  iceState === 'failed' ? 'Route failed — the relay may be overloaded, try again in a moment.' :
+                    'Check the code and that the phone page is open.');
+              connectBtn.disabled = false;
+              connectBtn.textContent = 'Connect';
+              camTag.textContent = 'CAM: —';
+            }
+          }, 15000);
+
+          const pc = call.peerConnection;
+          if (pc) {
+            pc.oniceconnectionstatechange = () => {
+              iceState = pc.iceConnectionState;
+              console.log('ICE state:', iceState);
+              if (!gotStream) {
+                connectErr.textContent = 'Negotiating route (' + iceState + ')…';
+              }
+              if (iceState === 'failed') {
+                connectErr.textContent = 'Route failed — network likely blocking WebRTC entirely.';
+                connectBtn.disabled = false;
+                connectBtn.textContent = 'Connect';
+              }
+            };
+          }
+
+          call.on('stream', (remoteStream) => {
+            gotStream = true;
+            clearTimeout(timeout);
+            connectErr.textContent = '';
+            cam.srcObject = remoteStream;
+            camTag.textContent = 'CAM: LINKED';
+            connectScreen.classList.add('hidden');
+            emptyState.classList.remove('hidden');
+            if (state.imgData) emptyState.classList.add('hidden');
+            connectBtn.disabled = false;
+            connectBtn.textContent = 'Connect';
+          });
+
+          call.on('close', () => {
+            camTag.textContent = 'CAM: DISCONNECTED';
+            connectScreen.classList.remove('hidden');
+          });
+
+          call.on('error', () => {
+            connectErr.textContent = 'Connection failed — try again.';
+            connectBtn.disabled = false;
+            connectBtn.textContent = 'Connect';
+          });
+        });
+
+        peer.on('error', (err) => {
+          connectErr.textContent = 'Could not connect: ' + err.type;
+          connectBtn.disabled = false;
+          connectBtn.textContent = 'Connect';
+          camTag.textContent = 'CAM: —';
+        });
+      }
+
+      connectBtn.addEventListener('click', () => {
+        const code = codeInput.value.trim();
+        if (code.length < 3) { connectErr.textContent = 'Enter the code shown on your phone.'; return; }
+        connectToPhone(code);
+        save();
+        localStorage.setItem('tracer_last_code', code);
+      });
+      codeInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') connectBtn.click(); });
+
+      disconnectBtn.addEventListener('click', () => {
+        if (currentCall) currentCall.close();
+        if (peer) peer.destroy();
+        camTag.textContent = 'CAM: —';
+        connectScreen.classList.remove('hidden');
+      });
+
+      document.getElementById('btnCamSwitch').addEventListener('click', () => {
+        const code = codeInput.value.trim() || localStorage.getItem('tracer_last_code');
+        if (code) connectToPhone(code);
+      });
+
+      const lastCode = localStorage.getItem('tracer_last_code');
+      if (lastCode) codeInput.value = lastCode;
+
+      // ---------- init ----------
+      load();
+      syncControlsFromState();
+      applyLockUI();
+      applyViewTransform();
+      requestWakeLock();
+      positionCollapseBtn();
       document.getElementById('btnFlipH').classList.toggle('active', state.flipH);
       document.getElementById('btnFlipV').classList.toggle('active', state.flipV);
       if (state.imgData) {
