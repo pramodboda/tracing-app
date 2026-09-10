@@ -6,12 +6,87 @@
   <meta name="viewport"
     content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>Tracer — AR Drawing Aid</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
+    rel="stylesheet">
+
+
+  <style>
+    *,
+    *::before,
+    *::after {
+      padding: 0;
+      margin: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Inter", sans-serif;
+      font-optical-sizing: auto;
+      /* font-weight: <weight>; */
+      font-style: normal;
+    }
+
+    .selection-page {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100vh;
+      gap: 14px;
+      padding: 15px;
+    }
+
+    .btn {
+      text-decoration: none;
+      border: 0;
+      color: #f9f9f9;
+      background: #000;
+      padding: 12px 18px;
+      position: relative;
+
+      min-width: 200px;
+      overflow: hidden;
+
+      border-radius: 12px;
+    }
+
+    .btn .icon {
+      position: absolute;
+      font-size: 70px;
+      top: -5px;
+      right: 0;
+      color: #f9f9f9;
+      transform: rotate(-25deg);
+      opacity: 0.2;
+    }
+
+    @media screen and (max-width: 375px) {
+
+      .selection-page {
+        width: 100%;
+        flex-direction: column;
+      }
+
+      .btn {
+        width: 100%;
+        margin: 0;
+      }
+    }
+  </style>
 </head>
 
-<body>
-  <a href="./camera.html">Select Me in Phone</a>
-  <a href="./trace-viewer.html">Select Me in on other devices</a>
+<body class="selection-page">
+  <a href="./camera.html" class="btn btn-dark">SELECT ME<br>IN CAMERA DEVICE <ion-icon class="icon"
+      name="camera-outline"></ion-icon></a>
+  <a href="./trace-viewer.html" class="btn btn-dark">SELECT ME<br>ON OTHER DEVICES <ion-icon class="icon"
+      name="tablet-portrait-outline"></ion-icon></a>
 
+
+  <script type="module" src="https://unpkg.com/ionicons@8.0.13/dist/ionicons/ionicons.esm.js"></script>
 </body>
 
 </html>
