@@ -2891,7 +2891,7 @@
     <div id="connectErr"></div>
   </div>
 
-  <button id="collapseBtn">▲</button>
+  <button id="collapseBtn"><ion-icon name="caret-up-outline"></ion-icon></button>
   <div id="dock">
     <div id="dockHandle"></div>
 
@@ -3217,7 +3217,7 @@
       }
       collapseBtn.addEventListener('click', () => {
         dock.classList.toggle('collapsed');
-        collapseBtn.textContent = dock.classList.contains('collapsed') ? '▼' : '▲';
+        collapseBtn.innerHTML = dock.classList.contains('collapsed') ? '<ion-icon name="caret-down-outline"></ion-icon>' : '<ion-icon name="caret-up-outline"></ion-icon>';
         positionCollapseBtn();
       });
       window.addEventListener('resize', positionCollapseBtn);
@@ -3472,6 +3472,8 @@
       document.addEventListener('touchmove', (e) => { e.preventDefault(); }, { passive: false });
     })();
   </script>
+
+  <script type="module" src="https://unpkg.com/ionicons@8.0.13/dist/ionicons/ionicons.esm.js"></script>
 </body>
 
 </html>
